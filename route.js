@@ -1,0 +1,11 @@
+const express=require('express')
+const { Signup, Login, editUser, getUserByName, transfer, getMe } = require('./controller')
+const { isLogin } = require('./middleware')
+const appRoute=express.Router()
+appRoute.post('/signup',Signup)
+appRoute.post('/signin',Login)
+appRoute.get('/me',isLogin,getMe)
+appRoute.put('/edit/user',isLogin,editUser)
+appRoute.get('/bulk/user',isLogin,getUserByName)
+appRoute.post('/account/transfer',isLogin,transfer)
+module.exports=appRoute
