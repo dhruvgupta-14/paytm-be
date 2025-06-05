@@ -16,7 +16,11 @@ const connectDB=async()=>{
     console.log('mongo db',e)
   }
 }
-app.listen(process.env.PORT,(async()=>{
-  await connectDB()
-  console.log('Server Running')
-}))
+const startServer = async () => {
+  await connectDB();
+  app.listen(process.env.PORT, () => {
+    console.log("Server running on port", process.env.PORT);
+  });
+};
+
+startServer();
