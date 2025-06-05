@@ -1,5 +1,5 @@
 const express=require('express')
-const { Signup, Login, editUser, getUserByName, transfer, getMe } = require('./controller')
+const { Signup, Login, editUser, getUserByName, transfer, getMe, gettingTranscation, generateMoreMoney } = require('./controller')
 const { isLogin } = require('./middleware')
 const appRoute=express.Router()
 appRoute.post('/signup',Signup)
@@ -8,4 +8,6 @@ appRoute.get('/me',isLogin,getMe)
 appRoute.put('/edit/user',isLogin,editUser)
 appRoute.get('/bulk/user',isLogin,getUserByName)
 appRoute.post('/account/transfer',isLogin,transfer)
+appRoute.get('/account/transaction',isLogin,gettingTranscation)
+appRoute.get('/account/generate',isLogin,generateMoreMoney)
 module.exports=appRoute

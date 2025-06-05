@@ -1,9 +1,12 @@
 const express=require('express')
+const http=require('http')
 const dotenv=require('dotenv')
 const {default: mongoose } = require('mongoose')
 const cors=require('cors')
 const appRoute = require('./route')
+const { startWSServer } = require('./wsServer')
 const app=express()
+const server=http.createServer(app)
 dotenv.config()
 app.use(cors())
 app.use(express.json())
@@ -18,7 +21,8 @@ const connectDB=async()=>{
 }
 const startServer = async () => {
   await connectDB();
-  app.listen(process.env.PORT, () => {
+  startWSServer(server)
+  server.listen(process.env.PORT, () => {
     console.log("Server running on port", process.env.PORT);
   });
 };

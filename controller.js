@@ -1,8 +1,9 @@
 const z = require("zod");
-const { User, Account } = require("./model");
+const { User, Account, Transaction } = require("./model");
 const b = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { default: mongoose } = require("mongoose");
+const { sendNotification } = require("./wsServer");
 
 const userSchema = z.object({
   username: z
@@ -71,7 +72,6 @@ const userEditSchema = z.object({
     .string()
     .trim()
     .max(50, { message: "Last name must not exceed 50 characters" }),
-
 });
 
 const Signup = async (req, res) => {
@@ -174,7 +174,7 @@ const Login = async (req, res) => {
 
 const editUser = async (req, res) => {
   const user = req.user;
-  const { firstName,lastName } = req.body;
+  const { firstName, lastName } = req.body;
   try {
     const validateSchema = userEditSchema.safeParse({
       firstName,
@@ -241,41 +241,62 @@ const getUserByName = async (req, res) => {
 };
 
 const transfer = async (req, res) => {
-  //we dont use transaction as not installed
   try {
-    // const session = await mongoose.startSession();
-    // session.startTransaction();
+    const session = await mongoose.startSession();
+    session.startTransaction();
     const { to, balance } = req.body;
     const user = req.user;
-    const accountDoc = await Account.findOne({ userId: user._id }) 
-    // .session(
-    //   session
-    // );
+    const accountDoc = await Account.findOne({ userId: user._id }).populate(
+      "userId",
+      "username"
+    );
     if (!accountDoc || accountDoc.balance < balance) {
-      // await session.abortTransaction();
+      await session.abortTransaction();
       return res.status(400).json({
         message: "Insufficient balance",
       });
     }
     const toDoc = await Account.findOne({ userId: to })
-    // .session(session);
+      .populate("userId", "username")
+      .session(session);
     if (!toDoc) {
-      // await session.abortTransaction();
+      await session.abortTransaction();
       return res.status(400).json({
         message: "Such Account Not Exist",
       });
     }
+
     await Account.updateOne(
       { userId: user._id },
       { $inc: { balance: -balance } }
-    )
-    // .session(session);
+    ).session(session);
     await Account.updateOne(
       { userId: to },
       { $inc: { balance: balance } }
-    )
-    // .session(session);
-    // await session.commitTransaction();
+    ).session(session);
+    await session.commitTransaction();
+    //sender
+    await Transaction.create({
+      name: accountDoc.userId.username,
+      userId: accountDoc.userId,
+      role: "sender",
+      amount: balance,
+      prevBalance: accountDoc.balance,
+      newBalance: accountDoc.balance - Number(balance),
+    });
+    //receiver
+    await Transaction.create({
+      name: toDoc.userId.username,
+      userId: toDoc.userId,
+      role: "receiver",
+      amount: balance,
+      prevBalance: toDoc.balance,
+      newBalance: toDoc.balance + Number(balance),
+    });
+    sendNotification(to, {
+      sender: accountDoc.userId.username,
+      amount: balance,
+    });
     return res.status(200).json({
       success: true,
       message: "Transfer Successfully",
@@ -304,6 +325,7 @@ const getMe = async (req, res) => {
       firstName: user.firstName,
       balance: accountDoc.balance,
       lastName: user.lastName,
+      userId: user._id,
     });
   } catch (e) {
     console.log("getting me e", e);
@@ -314,4 +336,53 @@ const getMe = async (req, res) => {
   }
 };
 
-module.exports = { Signup, Login, editUser, getUserByName, transfer, getMe };
+const gettingTranscation = async (req, res) => {
+  try {
+    const transactionDoc = await Transaction.find({
+      userId: req.user._id,
+    }).sort({ createdAt: -1 });
+    return res.status(200).json({
+      success: true,
+      data: transactionDoc,
+    });
+  } catch (e) {
+    console.log("getting transaction e", e);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+const generateMoreMoney = async (req, res) => {
+  try {
+    const accountDoc = await Account.findOneAndUpdate(
+      { userId: req.user._id },
+      {$inc:{balance:5000}},
+      { new: true }
+    );
+
+    await accountDoc.save();
+    return res.status(200).json({
+      success: true,
+      balance: accountDoc.balance,
+    });
+  } catch (e) {
+    console.log("generate money e", e);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+module.exports = {
+  Signup,
+  Login,
+  editUser,
+  getUserByName,
+  transfer,
+  getMe,
+  gettingTranscation,
+  generateMoreMoney
+};

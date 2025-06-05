@@ -39,6 +39,35 @@ const accountSchema=new mongoose.Schema({
     required:true
   }
 },{timestamps:true})
+const transactionSchema=new mongoose.Schema({
+  name:{
+    type:String,
+    required:true,
+  },
+  userId:{
+    type:mongoose.Schema.Types.ObjectId,
+    required:true,
+    ref:'User'
+  },
+  role:{
+   type:String,
+   enum:["sender","receiver"],
+   required:true
+  },
+  amount:{
+    type:Number,
+    required:true
+  },
+  prevBalance:{
+    type:Number,
+    required:true
+  },
+  newBalance:{
+    type:Number,
+    required:true
+  },
+},{timestamps:true})
+const Transaction=mongoose.model("Transcation",transactionSchema)
 const User = mongoose.model("User", userSchema);
 const Account=mongoose.model("Account",accountSchema)
-module.exports = { User,Account };
+module.exports = { User,Account,Transaction };
