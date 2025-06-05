@@ -277,7 +277,7 @@ const transfer = async (req, res) => {
     await session.commitTransaction();
     //sender
     await Transaction.create({
-      name: accountDoc.userId.username,
+      name: toDoc.userId.username,
       userId: accountDoc.userId,
       role: "sender",
       amount: balance,
@@ -286,7 +286,7 @@ const transfer = async (req, res) => {
     });
     //receiver
     await Transaction.create({
-      name: toDoc.userId.username,
+      name: accountDoc.userId.username,
       userId: toDoc.userId,
       role: "receiver",
       amount: balance,
